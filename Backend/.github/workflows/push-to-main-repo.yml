@@ -1,0 +1,52 @@
+name: Push Changes to Main Repo
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  push-main:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+
+    - name: Setup Git
+      run: |
+        git config --global user.email "thomas.juin@epitech.eu"
+        git config --global user.name "Thomas Juin"
+
+    - name: Setup SSH
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan github.com >> ~/.ssh/known_hosts
+        eval "$(ssh-agent -s)"  # Start the SSH agent
+        ssh-add ~/.ssh/id_rsa    # Add the SSH key
+
+    - name: Clone the central repository
+      run: |
+        git clone git@github.com:ChocofraiseTeam/Mainapp.git Mainapp
+
+    - name: Pull/Add Backend repository as a subtree
+      working-directory: Mainapp
+      run: |
+        if [ -d "Backend" ]; then
+          git subtree pull --prefix=Backend git@github.com:ChocofraiseTeam/Backend.git main --squash
+        else
+          git subtree add --prefix=Backend git@github.com:ChocofraiseTeam/Backend.git main --squash
+        fi
+
+    - name: Show Git Status for Debugging after subtree pull/add
+      working-directory: Mainapp
+      run: |
+        git status
+
+    - name: Push to central repository
+      working-directory: Mainapp
+      run: |
+        git push origin main
